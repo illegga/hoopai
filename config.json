@@ -1,0 +1,14 @@
+{
+  "API_BASE_URL": "https://api-basketball.p.rapidapi.com",
+  "API_KEY": "a6d20c7d56cc10a17ec9ef1531347f81",
+  "HOST": "api-basketball.p.rapidapi.com",
+  "CURRENCY": "NGN",
+  "INITIAL_BANKROLL_NGN": 500000.00,
+  "DEFAULT_STAKE_NGN": 5000.00,
+  "MIN_ODDS": 1.80,
+  "ROLLOVER_2_TARGET": 2.00,
+  "ROLLOVER_5_TARGET": 5.00,
+  "ROLLOVER_MAX_GAMES": 5,
+  "MODEL_VERSION": "v7",
+  "THEME_DEFAULT": "dark"
+}
