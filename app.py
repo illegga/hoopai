@@ -1,99 +1,91 @@
-# app.py  (only the changed parts – replace the old Predictions tab & header)
-
+# app.py — FIXED: Only import what exists
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 import pytz
 
-# -------------------------------------------------
-# IMPORTS (keep your existing ones)
-# -------------------------------------------------
-from modules.api_handler import (
-    get_all_upcoming_games, paginate, get_live_scores, get_stake_odds
-)
+st.set_page_config(page_title="HoopAI", layout="wide", page_icon="basketball")
+
+# === SAFE IMPORTS (ONLY WHAT EXISTS) ===
+from modules.auth import require_auth
+from modules.theme import apply
+from modules.stake_sim import init, place
+from modules.api_handler import get_games  # ← ONLY THIS ONE
 from modules.predictor import predict_game
 from modules.ui_components import prediction_card
-# ... your other imports ...
+from modules.database import init_db, get_best_choices
+from modules.rollover import generate_daily_rollover
 
-# -------------------------------------------------
-# SESSION STATE INIT
-# -------------------------------------------------
-if "page" not in st.session_state:
-    st.session_state.page = 1
-if "start_date" not in st.session_state:
-    st.session_state.start_date = datetime.now(pytz.timezone("Africa/Lagos")).date()
-if "days_ahead" not in st.session_state:
-    st.session_state.days_ahead = 7
+# === INIT ===
+if "best_threshold" not in st.session_state:
+    st.session_state.best_threshold = 0.70
+if "slip" not in st.session_state:
+    st.session_state.slip = []
 
-# -------------------------------------------------
-# HEADER (Live-Score button stays here)
-# -------------------------------------------------
+require_auth()
+init()
+init_db()
+apply()
+
+WAT = pytz.timezone('Africa/Lagos')
+
+# === HEADER ===
 col1, col2, col3 = st.columns([3, 1, 1])
 with col1:
     st.header("HOOPAI")
 with col2:
     st.selectbox("Theme", ["dark", "light"], key="theme", on_change=apply)
 with col3:
-    if st.button("Live Scores", key="live_btn"):
-        lives = get_live_scores()
-        if lives:
-            st.subheader("Live Games")
-            for g in lives:
-                home = g["teams"]["home"]["name"]
-                away = g["teams"]["away"]["name"]
-                hs = g["scores"]["home"]["total"]
-                as_ = g["scores"]["away"]["total"]
-                st.write(f"**{home} {hs} – {as_} {away}**")
-                st.caption(f"{g['league']['name']} | {g['period']} | {g['time']}")
-        else:
-            st.info("No live games right now.")
+    st.session_state.best_threshold = st.slider("Threshold", 0.60, 0.90, st.session_state.best_threshold, 0.01)
 
-# -------------------------------------------------
-# PREDICTIONS TAB (50 per page, pagination, multi-date)
-# -------------------------------------------------
+# === TABS ===
+tab1, tab2, tab3, tab4 = st.tabs(["Predictions", "Sim Bets", "Best Choices", "Rollover"])
+
 with tab1:
     st.header("Predictions")
-
-    # ----- DATE & RANGE -----
-    c1, c2 = st.columns([2, 1])
-    with c1:
-        start_date = st.date_input(
-            "Start Date", st.session_state.start_date,
-            key="start_date_input"
-        )
-    with c2:
-        days_ahead = st.selectbox(
-            "Days Ahead", [1, 3, 7, 14, 30],
-            index=[1, 3, 7, 14, 30].index(st.session_state.days_ahead),
-            key="days_ahead_input"
-        )
-
-    # ----- FETCH ALL GAMES -----
-    games_df = get_all_upcoming_games(str(start_date), days_ahead)
-
-    if games_df.empty:
-        st.error("No upcoming games – check API key or date range.")
+    date = st.date_input("Date", datetime.now(WAT).date(), key="pred_date")
+    games = get_games(str(date))  # ← YOUR EXISTING FUNCTION
+    if games.empty:
+        st.info("No games for this date.")
     else:
-        st.info(f"Found **{len(games_df)}** upcoming games across {len(LEAGUE_IDS)} leagues.")
+        for _, g in games.iterrows():
+            pred = predict_game(g.to_dict())
+            prediction_card(g, pred)
 
-        # ----- PAGINATION -----
-        per_page = 50
-        total_pages = (len(games_df) + per_page - 1) // per_page
-        page = st.selectbox(
-            "Page", range(1, total_pages + 1),
-            index=st.session_state.page - 1,
-            key="page_select"
-        )
-        st.session_state.page = page
+with tab2:
+    st.header("Sim Bet Slip")
+    slip = st.session_state.slip
+    if slip:
+        total = sum(b['stake'] for b in slip)
+        pot = sum(b['potential'] for b in slip)
+        st.metric("Stake", f"₦{total:,.0f}")
+        st.metric("Win", f"₦{pot:,.0f}")
+        if st.button("PLACE", type="primary"):
+            ok, msg = place()
+            (st.success if ok else st.error)(msg)
+        for b in slip:
+            st.write(f"**{b['match']}** @ {b['odds']} → ₦{b['potential']:,.0f}")
+    else:
+        st.info("Empty slip.")
 
-        page_df = paginate(games_df, page, per_page)
+with tab3:
+    st.header(f"Best ≥ {int(st.session_state.best_threshold*100)}%")
+    df = get_best_choices(st.session_state.best_threshold, 0.05)
+    if df.empty:
+        st.info("Run Predictions to see picks.")
+    else:
+        for _, r in df.iterrows():
+            pred = {k: r[k] for k in ['predicted_winner','win_prob','ou_prediction','market_line','p_over_percent','over_odds','under_odds','edge','reasons']}
+            prediction_card(r, pred, show_add=True)
 
-        for _, row in page_df.iterrows():
-            pred = predict_game(row.to_dict())
-            prediction_card(row, pred)
-
-        # ----- NEXT BUTTON -----
-        if page < total_pages:
-            if st.button("Next Page", key="next_page_btn"):
-                st.session_state.page = page + 1
-                st.experimental_rerun()
+with tab4:
+    st.header("Rollover")
+    date_ro = st.date_input("Date", datetime.now(WAT).date(), key="ro_date")
+    thresh = st.session_state.best_threshold
+    ro2 = generate_daily_rollover(str(date_ro), 2.0, threshold=thresh)
+    ro5 = generate_daily_rollover(str(date_ro), 5.0, threshold=thresh)
+    
+    s1, s2 = st.tabs(["2 Odds", "5 Odds"])
+    with s1:
+        if ro2:
+            st.success(f"Odds: {ro2['combined
