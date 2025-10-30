@@ -1,10 +1,10 @@
-# app.py — FINAL: Fixed DatabaseError + init_db() + 15 balls on login
+# app.py — FINAL: Safe init + best_threshold + no crash
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 import pytz
 
-# === PAGE CONFIG (MUST BE FIRST) ===
+# === PAGE CONFIG ===
 st.set_page_config(page_title="HoopAI", layout="wide", page_icon="basketball")
 
 # === IMPORTS ===
@@ -14,26 +14,32 @@ from modules.stake_sim import init, place
 from modules.api_handler import get_games
 from modules.predictor import predict_game
 from modules.ui_components import prediction_card
-from modules.database import init_db, get_best_choices  # ← ADDED init_db
+from modules.database import init_db, get_best_choices
 from modules.rollover import generate_daily_rollover
+
+# === INIT SESSION STATE (MUST BE FIRST) ===
+if "best_threshold" not in st.session_state:
+    st.session_state.best_threshold = 0.70
 
 # === AUTH & INIT ===
 require_auth()
-init()           # ← stake_sim init
-init_db()        # ← ADD THIS LINE: Creates hoopai.db
+init()           # stake_sim
+init_db()        # database
 apply()
 
 # === TIMEZONE ===
 WAT = pytz.timezone('Africa/Lagos')
 
-# === SIMPLE HEADER (AFTER LOGIN) ===
+# === HEADER ===
 col1, col2, col3 = st.columns([3, 1, 1])
 with col1:
     st.header("HOOPAI")
 with col2:
     st.selectbox("Theme", ["dark", "light"], key="theme", on_change=apply)
 with col3:
-    st.session_state.best_threshold = st.slider("Best Choices Threshold", 0.60, 0.90, 0.70, 0.01, key="thresh")
+    st.session_state.best_threshold = st.slider(
+        "Best Choices Threshold", 0.60, 0.90, st.session_state.best_threshold, 0.01
+    )
 
 # === TABS ===
 tab1, tab2, tab3, tab4 = st.tabs(["Predictions", "Sim Bets", "Best Choices", "Rollover"])
@@ -42,9 +48,12 @@ with tab1:
     st.header("Today's Predictions")
     date = st.date_input("Select Date", datetime.now(WAT).date(), key="pred_date")
     games = get_games(str(date))
-    for _, g in games.iterrows():
-        pred = predict_game(g)
-        prediction_card(g, pred)
+    if games.empty:
+        st.info("No games found for this date.")
+    else:
+        for _, g in games.iterrows():
+            pred = predict_game(g)
+            prediction_card(g, pred)
 
 with tab2:
     st.header("Sim Bet Slip")
@@ -56,22 +65,29 @@ with tab2:
         st.metric("Potential Win", f"₦{pot:,.0f}")
         if st.button("PLACE SIM BETS", type="primary", use_container_width=True):
             ok, msg = place()
-            st.success(msg) if ok else st.error(msg)
+            if ok:
+                st.success(msg)
+            else:
+                st.error(msg)
         st.divider()
         for b in slip:
             st.write(f"**{b['match']}** → {b['pick']} @ {b['odds']} → ₦{b['potential']:,.0f}")
     else:
         st.info("Your bet slip is empty. Add games from Predictions.")
-        
+
 with tab3:
     st.header(f"Best Choices (≥ {int(st.session_state.best_threshold*100)}%)")
-    df = get_best_choices(threshold=st.session_state.best_threshold, edge_min=0.05)
-    if df.empty:
-        st.info("No picks yet. Run predictions to populate.")
-    else:
-        for _, r in df.iterrows():
-            pred = {k: r[k] for k in ['predicted_winner','win_prob','ou_prediction','market_line','p_over_percent','over_odds','under_odds','edge','reasons']}
-            prediction_card(r, pred, show_add=True)
+    try:
+        df = get_best_choices(threshold=st.session_state.best_threshold, edge_min=0.05)
+        if df.empty:
+            st.info("No picks yet. Run predictions to populate.")
+        else:
+            for _, r in df.iterrows():
+                pred = {k: r[k] for k in ['predicted_winner','win_prob','ou_prediction','market_line','p_over_percent','over_odds','under_odds','edge','reasons']}
+                prediction_card(r, pred, show_add=True)
+    except Exception as e:
+        st.error("Database not ready. Refreshing...")
+        st.experimental_rerun()
 
 with tab4:
     st.header("Rollover Builder")
