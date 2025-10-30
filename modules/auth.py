@@ -20,7 +20,8 @@ def _check(email, pwd):
     return users.get(email) == hash_pwd(pwd)
 
 def login():
-    st.markdown("### Login to Your Private Beta")
+    st.markdown('<div class="login-form">', unsafe_allow_html=True)
+    st.markdown("### Login to HoopAI")
     col1, col2 = st.columns([1, 1])
     with col1:
         email = st.text_input("Email", value="admin@hoopai.com", disabled=True)
@@ -32,7 +33,8 @@ def login():
             else:
                 st.error("Wrong password")
     with col2:
-        st.info("**Only You Can Access**")
+        st.info("**Beta Access Only**")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def require_auth():
     init()
