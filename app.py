@@ -2,6 +2,74 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import pytz
+
+# === PAGE CONFIG FIRST ===
+st.set_page_config(page_title="HoopAI", layout="wide", page_icon="basketball")
+
+# === ALL CSS HERE (BEFORE ANYTHING ELSE) ===
+st.markdown("""
+<style>
+/* GLOW + ANIMATED BASKETBALLS + HOOP */
+@keyframes glow {
+    from { text-shadow: 0 0 10px #00d4aa; }
+    to { text-shadow: 0 0 30px #00d4aa, 0 0 50px #00d4aa; }
+}
+@keyframes bounce {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-30px) rotate(180deg); }
+}
+@keyframes fly {
+    0% { transform: translateX(-100vw) translateY(-50px) rotate(0deg); }
+    100% { transform: translateX(100vw) translateY(50px) rotate(720deg); }
+}
+.basketball {
+    width: 50px; height: 50px;
+    background: radial-gradient(circle at 30% 30%, #ff8c00, #e65c00);
+    border-radius: 50%;
+    position: absolute;
+    animation: bounce 2s infinite ease-in-out;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    z-index: 1;
+}
+.basketball::after {
+    content: '';
+    position: absolute;
+    top: 15px; left: 15px;
+    width: 20px; height: 20px;
+    background: #fff;
+    border-radius: 50%;
+    opacity: 0.7;
+}
+.hoop {
+    width: 80px; height: 60px;
+    border: 8px solid #fff;
+    border-top: none;
+    border-radius: 0 0 40px 40px;
+    position: absolute;
+    bottom: 20px; right: 10%;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    z-index: 2;
+}
+.net {
+    width: 100px; height: 80px;
+    background: repeating-linear-gradient(0deg, #fff, #fff 5px, transparent 5px, transparent 10px);
+    position: absolute;
+    bottom: -20px; right: 0;
+    opacity: 0.8;
+    z-index: 1;
+}
+.login-container {
+    text-align: center;
+    padding: 40px 0;
+    position: relative;
+    overflow: hidden;
+    height: 300px;
+    background: transparent;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# === IMPORTS AFTER CSS ===
 from modules.auth import require_auth
 from modules.theme import apply
 from modules.stake_sim import init, place
@@ -10,19 +78,6 @@ from modules.predictor import predict_game
 from modules.ui_components import prediction_card
 from modules.database import get_best_choices
 from modules.rollover import generate_daily_rollover
-
-# === PAGE CONFIG MUST BE FIRST! ===
-st.set_page_config(page_title="HoopAI", layout="wide", page_icon="basketball")
-
-# === GLOW ANIMATION (NOW AFTER page_config) ===
-st.markdown("""
-<style>
-@keyframes glow {
-    from { text-shadow: 0 0 10px #00d4aa; }
-    to { text-shadow: 0 0 30px #00d4aa, 0 0 50px #00d4aa; }
-}
-</style>
-""", unsafe_allow_html=True)
 
 # === AUTH & INIT ===
 require_auth()
