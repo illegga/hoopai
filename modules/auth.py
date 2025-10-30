@@ -20,8 +20,23 @@ def _check(email, pwd):
     return users.get(email) == hash_pwd(pwd)
 
 def login():
-    st.markdown('<div class="login-form">', unsafe_allow_html=True)
-    st.markdown("### Login to HoopAI")
+    # === ANIMATED LOGIN (CSS ONLY) ===
+    st.markdown('<div class="login-box">', unsafe_allow_html=True)
+    
+    st.markdown("### 🔐 Login to HoopAI")
+    st.markdown("**Private Beta • Your Edge Engine**")
+    
+    # Bouncing balls
+    st.markdown("""
+    <div style="text-align:center; margin:20px 0;">
+        <span class="bounce b1">🏀</span>
+        <span class="bounce b2">🏀</span>
+        <span class="bounce b3">🏀</span>
+        <span class="bounce b4">🏀</span>
+        <span class="bounce b5">🏀</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
     col1, col2 = st.columns([1, 1])
     with col1:
         email = st.text_input("Email", value="admin@hoopai.com", disabled=True)
@@ -33,7 +48,8 @@ def login():
             else:
                 st.error("Wrong password")
     with col2:
-        st.info("**Beta Access Only**")
+        st.info("**Only You Can Access**")
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
 def require_auth():
