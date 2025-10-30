@@ -1,11 +1,13 @@
-# modules/api_handler.py — FINAL: ALL OFFICIAL LEAGUES + MOCK FALLBACK
+# modules/api_handler.py
 import streamlit as st
 import pandas as pd
 import requests
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
-# === CONFIG ===
+# -------------------------------------------------
+# CONFIG
+# -------------------------------------------------
 with open("config.json") as f:
     cfg = json.load(f)
 
@@ -16,91 +18,102 @@ HEADERS = {
     "X-RapidAPI-Host": cfg["HOST"]
 }
 
-# === ALL OFFICIAL LEAGUE IDs (RapidAPI Basketball) ===
+# -------------------------------------------------
+# ALL OFFICIAL LEAGUE IDS (from API-Basketball docs)
+# -------------------------------------------------
 LEAGUE_IDS = {
-    "NBA": "12",
-    "EuroLeague": "132",
-    "NCAA": "108",
-    "WNBA": "111",
-    "CBA": "116",
-    "KBL": "117",
-    "ACB": "118",
-    "BSL": "119",
-    "LNB": "120",
-    "VTB": "121",
-    "BCL": "122",
-    "NBL": "123",
-    "LKL": "124",
-    "LNB Pro B": "125",
-    "NBL1": "126",
-    "PBA": "127",
-    "ABL": "128",
-    "LNA": "129",
-    "LNB Pro A": "130",
-    "LNB Pro B": "131"
+    12: "NBA", 132: "EuroLeague", 108: "NCAA", 111: "WNBA",
+    116: "CBA", 117: "KBL", 118: "ACB", 119: "BSL",
+    120: "LNB", 121: "VTB", 122: "BCL", 123: "NBL",
+    124: "LKL", 125: "LNB Pro B", 126: "NBL1", 127: "PBA",
+    128: "ABL", 129: "LNA", 130: "LNB Pro A", 131: "LNB Pro B"
+    # add more IDs if you discover them – the loop works for any number
 }
 
-# === MOCK GAMES (FALLBACK) ===
-def mock_games(date_str):
-    return pd.DataFrame([
-        {
-            "id": "mock_nba_1",
-            "date": f"{date_str}T20:00:00.000Z",
-            "teams": {"home": {"name": "Lakers"}, "away": {"name": "Warriors"}},
-            "league": {"name": "NBA"}
-        },
-        {
-            "id": "mock_euro_1",
-            "date": f"{date_str}T19:30:00.000Z",
-            "teams": {"home": {"name": "Real Madrid"}, "away": {"name": "Barcelona"}},
-            "league": {"name": "EuroLeague"}
-        },
-        {
-            "id": "mock_ncaa_1",
-            "date": f"{date_str}T21:00:00.000Z",
-            "teams": {"home": {"name": "Duke"}, "away": {"name": "UNC"}},
-            "league": {"name": "NCAA"}
-        }
-    ])
-
-# === FETCH ALL LEAGUES ===
-@st.cache_data(ttl=1800)  # 30 min cache
-def get_games(date_str):
+# -------------------------------------------------
+# FETCH ALL UPCOMING GAMES (multiple dates)
+# -------------------------------------------------
+@st.cache_data(ttl=1800)          # 30 min cache
+def get_all_upcoming_games(start_date: str, days_ahead: int = 7) -> pd.DataFrame:
     all_games = []
-    
-    for name, league_id in LEAGUE_IDS.items():
-        url = f"{API_BASE}/games"
-        params = {
-            "date": date_str,
-            "league": league_id,
-            "season": "2024"  # Adjust per league if needed
-        }
-        try:
-            response = requests.get(url, headers=HEADERS, params=params, timeout=8)
-            if response.status_code == 200:
-                data = response.json().get("response", [])
-                for game in data:
-                    if game.get("status", {}).get("long") in ["Not Started", "Postponed"]:
-                        game["league"]["name"] = name  # Override with readable name
-                        all_games.append(game)
-        except Exception as e:
-            print(f"Error fetching {name}: {e}")
-            continue
+    cur = datetime.strptime(start_date, "%Y-%m-%d")
 
-    if all_games:
-        df = pd.DataFrame(all_games)
-        df = df.sort_values("date")
-        return df
-    else:
-        st.warning("No live games. Using mock data.")
-        return mock_games(date_str)
+    for _ in range(days_ahead):
+        d_str = cur.strftime("%Y-%m-%d")
+        for lid, name in LEAGUE_IDS.items():
+            url = f"{API_BASE}/games"
+            params = {
+                "date": d_str,
+                "league": lid,
+                "season": "2024",
+                "status": "Not Started"   # only future games
+            }
+            try:
+                r = requests.get(url, headers=HEADERS, params=params, timeout=5)
+                if r.status_code == 200:
+                    for g in r.json().get("response", []):
+                        g["league_name"] = name
+                        all_games.append(g)
+            except Exception as e:
+                st.warning(f"[{name} – {d_str}] {e}")
 
-# === ODDS (MOCK FOR NOW) ===
-def get_stake_odds(game_id):
-    if "mock" in game_id:
-        return {
-            "market_line": 215.5,
-            "over_odds": 1.91,
-            "under_odds": 1.89
-        }
-    return {}
+        cur += timedelta(days=1)
+
+    if not all_games:
+        st.error("No upcoming games – check API key / date range.")
+        return pd.DataFrame()
+
+    df = pd.DataFrame(all_games)
+    df = df.sort_values("date")
+    df["time_local"] = pd.to_datetime(df["date"]).dt.tz_convert("Africa/Lagos").dt.strftime("%H:%M WAT")
+    return df
+
+
+# -------------------------------------------------
+# PAGINATION (50 per page)
+# -------------------------------------------------
+def paginate(df: pd.DataFrame, page: int = 1, per_page: int = 50) -> pd.DataFrame:
+    start = (page - 1) * per_page
+    return df.iloc[start:start + per_page]
+
+
+# -------------------------------------------------
+# LIVE SCORES (refreshes every 10 min)
+# -------------------------------------------------
+@st.cache_data(ttl=600)   # 10 min
+def get_live_scores() -> list:
+    url = f"{API_BASE}/games"
+    params = {"status": "Live", "timezone": "Africa/Lagos"}
+    try:
+        r = requests.get(url, headers=HEADERS, params=params, timeout=5)
+        if r.status_code == 200:
+            return r.json().get("response", [])
+    except Exception as e:
+        st.warning(f"Live scores error: {e}")
+    return []
+
+
+# -------------------------------------------------
+# ODDS (fallback if none)
+# -------------------------------------------------
+def get_stake_odds(game_id: str):
+    url = f"{API_BASE}/odds"
+    params = {"game": game_id}
+    try:
+        r = requests.get(url, headers=HEADERS, params=params, timeout=5)
+        if r.status_code == 200:
+            data = r.json().get("response", [])
+            if data:
+                for book in data[0].get("bookmakers", []):
+                    for bet in book.get("bets", []):
+                        if "total" in bet["name"].lower():
+                            over = bet["values"][0]
+                            under = bet["values"][1]
+                            return {
+                                "market_line": float(over["value"]),
+                                "over_odds": float(over["odd"]),
+                                "under_odds": float(under["odd"])
+                            }
+    except Exception:
+        pass
+    return {"market_line": 215.5, "over_odds": 1.91, "under_odds": 1.89}
