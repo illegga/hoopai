@@ -1,11 +1,3 @@
-st.markdown("""
-<style>
-@keyframes glow {
-    from { text-shadow: 0 0 10px #00d4aa; }
-    to { text-shadow: 0 0 30px #00d4aa, 0 0 50px #00d4aa; }
-}
-</style>
-""", unsafe_allow_html=True)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -19,20 +11,37 @@ from modules.ui_components import prediction_card
 from modules.database import get_best_choices
 from modules.rollover import generate_daily_rollover
 
-st.set_page_config(page_title="HoopAI", layout="wide", page_icon="basketball")
-require_auth(); init(); apply()
+# === GLOW ANIMATION (from auth.py) ===
+st.markdown("""
+<style>
+@keyframes glow {
+    from { text-shadow: 0 0 10px #00d4aa; }
+    to { text-shadow: 0 0 30px #00d4aa, 0 0 50px #00d4aa; }
+}
+</style>
+""", unsafe_allow_html=True)
 
+# === PAGE CONFIG ===
+st.set_page_config(page_title="HoopAI", layout="wide", page_icon="basketball")
+
+# === AUTH & INIT ===
+require_auth()
+init()
+apply()
+
+# === TIMEZONE ===
 WAT = pytz.timezone('Africa/Lagos')
 
-# HEADER
+# === HEADER ===
 col1, col2, col3 = st.columns([3, 1, 1])
-with col1: st.title("HoopAI")
+with col1:
+    st.markdown("<h1 style='text-align:center; color:#00d4aa; animation:glow 2s infinite alternate;'>HOOPAI</h1>", unsafe_allow_html=True)
 with col2:
     st.selectbox("Theme", ["dark", "light"], key="theme", on_change=apply)
 with col3:
     st.session_state.best_threshold = st.slider("Best Choices Threshold", 0.60, 0.90, 0.70, 0.01, key="thresh")
 
-# TABS
+# === TABS ===
 tab1, tab2, tab3, tab4 = st.tabs(["Predictions", "Sim Bets", "Best Choices", "Rollover"])
 
 with tab1:
