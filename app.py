@@ -1,4 +1,4 @@
-# app.py — FULL FINAL (NO GLOWING HEADER AFTER LOGIN)
+# app.py — FINAL: Fixed DatabaseError + init_db() + 15 balls on login
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -14,12 +14,13 @@ from modules.stake_sim import init, place
 from modules.api_handler import get_games
 from modules.predictor import predict_game
 from modules.ui_components import prediction_card
-from modules.database import get_best_choices
+from modules.database import init_db, get_best_choices  # ← ADDED init_db
 from modules.rollover import generate_daily_rollover
 
 # === AUTH & INIT ===
 require_auth()
-init()
+init()           # ← stake_sim init
+init_db()        # ← ADD THIS LINE: Creates hoopai.db
 apply()
 
 # === TIMEZONE ===
@@ -66,7 +67,7 @@ with tab3:
     st.header(f"Best Choices (≥ {int(st.session_state.best_threshold*100)}%)")
     df = get_best_choices(threshold=st.session_state.best_threshold, edge_min=0.05)
     if df.empty:
-        st.info("No picks meet your threshold. Lower it to see more.")
+        st.info("No picks yet. Run predictions to populate.")
     else:
         for _, r in df.iterrows():
             pred = {k: r[k] for k in ['predicted_winner','win_prob','ou_prediction','market_line','p_over_percent','over_odds','under_odds','edge','reasons']}
