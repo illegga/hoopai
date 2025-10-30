@@ -1,11 +1,11 @@
-# app.py — FINAL: GLOWING HOOPAI BEFORE & AFTER LOGIN
+# app.py — FULL FINAL (GLOWING HEADER AFTER LOGIN)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 import pytz
 
 # === PAGE CONFIG (MUST BE FIRST) ===
-st.set_page_config(page_title="HoopAI", layout="wide", page_icon="basketball")
+st.set_page_config(page_title="HoopAI", layout="wide", page_icon="🏀")
 
 # === IMPORTS ===
 from modules.auth import require_auth

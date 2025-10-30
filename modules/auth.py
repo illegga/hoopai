@@ -17,7 +17,7 @@ def hash_pwd(p): return hashlib.sha256(p.encode()).hexdigest()
 
 def _check(email, pwd):
     if not os.path.exists(USER_DB): return False
-    with open(USER_DB) as f: users = json.load(f)
+    with open(USER_DB) as f: users = json.dump(f)
     return users.get(email) == hash_pwd(pwd)
 
 def login():
@@ -36,21 +36,21 @@ def login():
 
         <!-- 15 BOUNCING BASKETBALLS -->
         <div style="height:140px; position:relative; margin:40px 0;">
-            <span style="position:absolute; left:0%;   animation: bounce 1.5s infinite; animation-delay:0s;   font-size:3.2rem;">basketball</span>
-            <span style="position:absolute; left:4%;   animation: bounce 1.5s infinite; animation-delay:0.1s; font-size:3.2rem;">basketball</span>
-            <span style="position:absolute; left:8%;   animation: bounce 1.5s infinite; animation-delay:0.2s; font-size:3.2rem;">basketball</span>
-            <span style="position:absolute; left:12%;  animation: bounce 1.5s infinite; animation-delay:0.3s; font-size:3.2rem;">basketball</span>
-            <span style="position:absolute; left:16%;  animation: bounce 1.5s infinite; animation-delay:0.4s; font-size:3.2rem;">basketball</span>
-            <span style="position:absolute; left:20%;  animation: bounce 1.5s infinite; animation-delay:0.5s; font-size:3.2rem;">basketball</span>
-            <span style="position:absolute; left:24%;  animation: bounce 1.5s infinite; animation-delay:0.6s; font-size:3.2rem;">basketball</span>
-            <span style="position:absolute; left:28%;  animation: bounce 1.5s infinite; animation-delay:0.7s; font-size:3.2rem;">basketball</span>
-            <span style="position:absolute; left:32%;  animation: bounce 1.5s infinite; animation-delay:0.8s; font-size:3.2rem;">basketball</span>
-            <span style="position:absolute; left:36%;  animation: bounce 1.5s infinite; animation-delay:0.9s; font-size:3.2rem;">basketball</span>
-            <span style="position:absolute; left:40%;  animation: bounce 1.5s infinite; animation-delay:1.0s; font-size:3.2rem;">basketball</span>
-            <span style="position:absolute; left:44%;  animation: bounce 1.5s infinite; animation-delay:1.1s; font-size:3.2rem;">basketball</span>
-            <span style="position:absolute; left:48%;  animation: bounce 1.5s infinite; animation-delay:1.2s; font-size:3.2rem;">basketball</span>
-            <span style="position:absolute; left:52%;  animation: bounce 1.5s infinite; animation-delay:1.3s; font-size:3.2rem;">basketball</span>
-            <span style="position:absolute; left:56%;  animation: bounce 1.5s infinite; animation-delay:1.4s; font-size:3.2rem;">basketball</span>
+            <span style="position:absolute; left:0%;   animation: bounce 1.5s infinite; animation-delay:0s;   font-size:3.2rem; color:#ff8c00;">🏀</span>
+            <span style="position:absolute; left:4%;   animation: bounce 1.5s infinite; animation-delay:0.1s; font-size:3.2rem; color:#ff8c00;">🏀</span>
+            <span style="position:absolute; left:8%;   animation: bounce 1.5s infinite; animation-delay:0.2s; font-size:3.2rem; color:#ff8c00;">🏀</span>
+            <span style="position:absolute; left:12%;  animation: bounce 1.5s infinite; animation-delay:0.3s; font-size:3.2rem; color:#ff8c00;">🏀</span>
+            <span style="position:absolute; left:16%;  animation: bounce 1.5s infinite; animation-delay:0.4s; font-size:3.2rem; color:#ff8c00;">🏀</span>
+            <span style="position:absolute; left:20%;  animation: bounce 1.5s infinite; animation-delay:0.5s; font-size:3.2rem; color:#ff8c00;">🏀</span>
+            <span style="position:absolute; left:24%;  animation: bounce 1.5s infinite; animation-delay:0.6s; font-size:3.2rem; color:#ff8c00;">🏀</span>
+            <span style="position:absolute; left:28%;  animation: bounce 1.5s infinite; animation-delay:0.7s; font-size:3.2rem; color:#ff8c00;">🏀</span>
+            <span style="position:absolute; left:32%;  animation: bounce 1.5s infinite; animation-delay:0.8s; font-size:3.2rem; color:#ff8c00;">🏀</span>
+            <span style="position:absolute; left:36%;  animation: bounce 1.5s infinite; animation-delay:0.9s; font-size:3.2rem; color:#ff8c00;">🏀</span>
+            <span style="position:absolute; left:40%;  animation: bounce 1.5s infinite; animation-delay:1.0s; font-size:3.2rem; color:#ff8c00;">🏀</span>
+            <span style="position:absolute; left:44%;  animation: bounce 1.5s infinite; animation-delay:1.1s; font-size:3.2rem; color:#ff8c00;">🏀</span>
+            <span style="position:absolute; left:48%;  animation: bounce 1.5s infinite; animation-delay:1.2s; font-size:3.2rem; color:#ff8c00;">🏀</span>
+            <span style="position:absolute; left:52%;  animation: bounce 1.5s infinite; animation-delay:1.3s; font-size:3.2rem; color:#ff8c00;">🏀</span>
+            <span style="position:absolute; left:56%;  animation: bounce 1.5s infinite; animation-delay:1.4s; font-size:3.2rem; color:#ff8c00;">🏀</span>
         </div>
     </div>
 
