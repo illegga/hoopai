@@ -61,7 +61,7 @@ with tab2:
             st.write(f"**{b['match']}** → {b['pick']} @ {b['odds']} → ₦{b['potential']:,.0f}")
     else:
         st.info("Your bet slip is empty. Add games from Predictions.")
-
+        
 with tab3:
     st.header(f"Best Choices (≥ {int(st.session_state.best_threshold*100)}%)")
     df = get_best_choices(threshold=st.session_state.best_threshold, edge_min=0.05)
