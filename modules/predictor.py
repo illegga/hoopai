@@ -95,5 +95,7 @@ def predict_game(game):
         'model_version': VER,
         'timestamp': pd.Timestamp.now().isoformat()
     }
+    from modules.database import save_prediction
+    save_prediction(game_data, pred)
     save_prediction(pred)
     return pred

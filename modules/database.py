@@ -1,39 +1,12 @@
-# modules/database.py — FINAL: Safe + no crash
-import sqlite3
-import pandas as pd
-import os
-
-DB_PATH = "data/hoopai.db"
+# modules/database.py — REPLACED: In-memory storage (no SQLite)
+import streamlit as st
 
 def init_db():
-    os.makedirs("data", exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS predictions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        game_id TEXT,
-        date TEXT,
-        home_team TEXT,
-        away_team TEXT,
-        predicted_winner TEXT,
-        win_prob REAL,
-        ou_prediction TEXT,
-        market_line REAL,
-        p_over_percent REAL,
-        over_odds REAL,
-        under_odds REAL,
-        edge REAL,
-        reasons TEXT
-    )
-    """)
-    conn.commit()
-    conn.close()
+    if "predictions" not in st.session_state:
+        st.session_state.predictions = []
 
 def save_prediction(game_data, pred):
-    init_db()  # ← CALL FIRST
-    conn = sqlite3.connect(DB_PATH)
-    
+    init_db()
     data = {
         "game_id": str(game_data.get("id", "")),
         "date": str(game_data.get("date", ""))[:10],
@@ -49,28 +22,15 @@ def save_prediction(game_data, pred):
         "edge": float(pred.get("edge", 0.0)),
         "reasons": " | ".join([str(r) for r in pred.get("reasons", [])])
     }
-    
-    df = pd.DataFrame([data])
-    try:
-        df.to_sql("predictions", conn, if_exists="append", index=False)
-    except Exception as e:
-        print(f"Save error: {e}")
-    finally:
-        conn.close()
+    st.session_state.predictions.append(data)
 
 def get_best_choices(threshold=0.7, edge_min=0.05):
     init_db()
-    conn = sqlite3.connect(DB_PATH)
-    sql = """
-    SELECT * FROM predictions
-    WHERE win_prob >= ? AND edge >= ?
-    ORDER BY edge DESC, win_prob DESC
-    LIMIT 20
-    """
-    try:
-        df = pd.read_sql(sql, conn, params=(threshold, edge_min))
-    except Exception as e:
-        print(f"Query error: {e}")
-        df = pd.DataFrame()
-    conn.close()
-    return df
+    df = pd.DataFrame(st.session_state.predictions)
+    if df.empty:
+        return df
+    filtered = df[
+        (df["win_prob"] >= threshold) &
+        (df["edge"] >= edge_min)
+    ].sort_values(by=["edge", "win_prob"], ascending=[False, False]).head(20)
+    return filtered

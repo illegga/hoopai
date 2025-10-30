@@ -1,4 +1,4 @@
-# app.py — FINAL: Safe init + best_threshold + no crash
+# app.py — FINAL: No SQLite, no crash, 15 balls, full app
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -14,17 +14,19 @@ from modules.stake_sim import init, place
 from modules.api_handler import get_games
 from modules.predictor import predict_game
 from modules.ui_components import prediction_card
-from modules.database import init_db, get_best_choices
+from modules.database import init_db, save_prediction, get_best_choices  # ← In-memory
 from modules.rollover import generate_daily_rollover
 
-# === INIT SESSION STATE (MUST BE FIRST) ===
+# === INIT SESSION STATE ===
 if "best_threshold" not in st.session_state:
     st.session_state.best_threshold = 0.70
+if "slip" not in st.session_state:
+    st.session_state.slip = []
 
 # === AUTH & INIT ===
 require_auth()
 init()           # stake_sim
-init_db()        # database
+init_db()        # in-memory
 apply()
 
 # === TIMEZONE ===
@@ -54,10 +56,11 @@ with tab1:
         for _, g in games.iterrows():
             pred = predict_game(g)
             prediction_card(g, pred)
+            save_prediction(g.to_dict(), pred)  # ← SAVE TO MEMORY
 
 with tab2:
     st.header("Sim Bet Slip")
-    slip = st.session_state.get("slip", [])
+    slip = st.session_state.slip
     if slip:
         total = sum(b['stake'] for b in slip)
         pot = sum(b['potential'] for b in slip)
@@ -77,17 +80,13 @@ with tab2:
 
 with tab3:
     st.header(f"Best Choices (≥ {int(st.session_state.best_threshold*100)}%)")
-    try:
-        df = get_best_choices(threshold=st.session_state.best_threshold, edge_min=0.05)
-        if df.empty:
-            st.info("No picks yet. Run predictions to populate.")
-        else:
-            for _, r in df.iterrows():
-                pred = {k: r[k] for k in ['predicted_winner','win_prob','ou_prediction','market_line','p_over_percent','over_odds','under_odds','edge','reasons']}
-                prediction_card(r, pred, show_add=True)
-    except Exception as e:
-        st.error("Database not ready. Refreshing...")
-        st.experimental_rerun()
+    df = get_best_choices(threshold=st.session_state.best_threshold, edge_min=0.05)
+    if df.empty:
+        st.info("No high-confidence picks yet. Run Predictions.")
+    else:
+        for _, r in df.iterrows():
+            pred = {k: r[k] for k in ['predicted_winner','win_prob','ou_prediction','market_line','p_over_percent','over_odds','under_odds','edge','reasons']}
+            prediction_card(r, pred, show_add=True)
 
 with tab4:
     st.header("Rollover Builder")
