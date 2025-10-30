@@ -1,12 +1,13 @@
+# app.py — FINAL: GLOWING HOOPAI BEFORE & AFTER LOGIN
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 import pytz
 
 # === PAGE CONFIG (MUST BE FIRST) ===
-st.set_page_config(page_title="HoopAI", layout="wide", page_icon="🏀")
+st.set_page_config(page_title="HoopAI", layout="wide", page_icon="basketball")
 
-# === IMPORTS AFTER CONFIG ===
+# === IMPORTS ===
 from modules.auth import require_auth
 from modules.theme import apply
 from modules.stake_sim import init, place
@@ -28,15 +29,15 @@ WAT = pytz.timezone('Africa/Lagos')
 col1, col2, col3 = st.columns([3, 1, 1])
 with col1:
     st.markdown("""
-    <h1 style="text-align:center; font-size:4.5rem; font-weight:900; color:#00d4aa;
-               text-shadow: 0 0 20px #00d4aa, 0 0 40px #00d4aa;
-               animation: glow 2s infinite alternate; margin:10px 0;">
+    <h1 style="text-align:center; font-size:5rem; font-weight:900; color:#00d4aa;
+               text-shadow: 0 0 25px #00d4aa, 0 0 50px #00d4aa, 0 0 75px #00d4aa, 0 0 100px #00d4aa;
+               animation: glow 2s infinite alternate; margin:20px 0;">
         HOOPAI
     </h1>
     <style>
     @keyframes glow {
-        from { text-shadow: 0 0 20px #00d4aa, 0 0 40px #00d4aa; }
-        to { text-shadow: 0 0 30px #00d4aa, 0 0 60px #00d4aa; }
+        from { text-shadow: 0 0 25px #00d4aa, 0 0 50px #00d4aa, 0 0 75px #00d4aa, 0 0 100px #00d4aa; }
+        to { text-shadow: 0 0 35px #00d4aa, 0 0 70px #00d4aa, 0 0 100px #00d4aa, 0 0 130px #00d4aa; }
     }
     </style>
     """, unsafe_allow_html=True)
