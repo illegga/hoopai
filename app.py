@@ -11,7 +11,10 @@ from modules.ui_components import prediction_card
 from modules.database import get_best_choices
 from modules.rollover import generate_daily_rollover
 
-# === GLOW ANIMATION (from auth.py) ===
+# === PAGE CONFIG MUST BE FIRST! ===
+st.set_page_config(page_title="HoopAI", layout="wide", page_icon="basketball")
+
+# === GLOW ANIMATION (NOW AFTER page_config) ===
 st.markdown("""
 <style>
 @keyframes glow {
@@ -20,9 +23,6 @@ st.markdown("""
 }
 </style>
 """, unsafe_allow_html=True)
-
-# === PAGE CONFIG ===
-st.set_page_config(page_title="HoopAI", layout="wide", page_icon="basketball")
 
 # === AUTH & INIT ===
 require_auth()
