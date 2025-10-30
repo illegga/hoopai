@@ -1,0 +1,10 @@
+streamlit==1.39.0
+pandas==2.2.3
+numpy==2.1.1
+xgboost==2.1.1
+scikit-learn==1.6.0
+scipy==1.16.0
+requests==2.32.3
+joblib==1.4.2
+pytz==2025.1
+cachetools==5.5.0
