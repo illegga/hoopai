@@ -1,31 +1,43 @@
-import pandas as pd
-from modules.database import get_prediction
+# modules/rollover.py — FINAL: Fixed ImportError
+import random
+from modules.api_handler import get_games
+from modules.predictor import predict_game
 
-def generate_daily_rollover(date_str, target_odds, threshold=0.70, max_games=5):
-    from modules.database import get_finished_games
-    games = get_finished_games(date_str)
-    candidates = []
+def generate_daily_rollover(date_str, target_odds, threshold=0.7):
+    games = get_games(date_str)
+    if games.empty:
+        return None
+
+    high_conf = []
     for _, g in games.iterrows():
-        p = get_prediction(g['id'])
-        if not p or p['win_prob'] < threshold: continue
-        odds = p['over_odds'] if p['ou_prediction']=='Over' else p['under_odds']
-        candidates.append({
-            'game': g, 'pred': p, 'odds': odds, 'prob': p['win_prob']
-        })
-    candidates.sort(key=lambda x: x['prob'], reverse=True)
-    
+        pred = predict_game(g.to_dict())
+        if pred['win_prob'] >= threshold and pred['edge'] >= 0.05:
+            odds = pred.get('over_odds') if pred['ou_prediction'] == 'Over' else pred.get('under_odds')
+            if odds and odds >= 1.8:
+                high_conf.append({
+                    'game': g.to_dict(),
+                    'pred': pred,
+                    'odds': odds
+                })
+
+    if len(high_conf) < 2:
+        return None
+
+    # Pick top games to hit target
     selected = []
     current = 1.0
-    for c in candidates[:max_games]:
-        next_odds = current * c['odds']
-        if next_odds >= target_odds: break
-        selected.append(c)
-        current = next_odds
-    
-    if len(selected) < 2: return None
+    for item in sorted(high_conf, key=lambda x: x['odds'], reverse=True):
+        if len(selected) >= 5:
+            break
+        if current * item['odds'] > target_odds * 1.1:
+            continue
+        selected.append(item)
+        current *= item['odds']
+
+    if abs(current - target_odds) > 0.5:
+        return None
+
     return {
-        'target': target_odds,
-        'games': selected,
         'combined_odds': round(current, 2),
-        'date': date_str
+        'games': selected
     }
