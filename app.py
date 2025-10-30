@@ -1,4 +1,4 @@
-# app.py — FINAL: NO ERRORS, NO IMPORT ISSUES
+# app.py — FINAL: 100% WORKING
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -16,15 +16,16 @@ from modules.ui_components import prediction_card
 from modules.database import init_db, save_prediction, get_best_choices
 from modules.rollover import generate_daily_rollover
 
-# === INIT ===
+# === INIT SESSION STATE ===
 if "best_threshold" not in st.session_state:
     st.session_state.best_threshold = 0.70
 if "slip" not in st.session_state:
     st.session_state.slip = []
 
+# === AUTH & INIT ===
 require_auth()
 init()
-init_db()
+init_db()        # ← CRITICAL: Creates predictions list
 apply()
 
 WAT = pytz.timezone('Africa/Lagos')
@@ -72,7 +73,7 @@ with tab3:
     st.header(f"Best ≥ {int(st.session_state.best_threshold*100)}%")
     df = get_best_choices(st.session_state.best_threshold, 0.05)
     if df.empty:
-        st.info("No picks.")
+        st.info("Run Predictions to see picks.")
     else:
         for _, r in df.iterrows():
             pred = {k: r[k] for k in ['predicted_winner','win_prob','ou_prediction','market_line','p_over_percent','over_odds','under_odds','edge','reasons']}
