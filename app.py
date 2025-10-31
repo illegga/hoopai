@@ -9,7 +9,7 @@ st.set_page_config(page_title="HoopAI", layout="wide", page_icon="basketball")
 from modules.auth import require_auth
 from modules.theme import apply
 from modules.stake_sim import init, place
-from modules.api_handler import get_games
+from modules.api_handler import get_games, get_upcoming_matches, get_live_scores
 from modules.predictor import predict_game
 from modules.ui_components import prediction_card
 from modules.database import init_db, save_prediction, get_best_choices
