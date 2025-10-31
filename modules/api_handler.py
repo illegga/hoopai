@@ -1,10 +1,10 @@
+# modules/api_handler.py — FIXED: Real games, all leagues, no "status" filter
 import streamlit as st
 import pandas as pd
 import requests
 import json
 from datetime import datetime, timedelta
 
-# CONFIG
 with open("config.json") as f:
     cfg = json.load(f)
 
@@ -15,7 +15,6 @@ HEADERS = {
     "X-RapidAPI-Host": cfg["HOST"]
 }
 
-# LEAGUE IDS
 LEAGUE_IDS = {
     12: "NBA", 132: "EuroLeague", 108: "NCAA", 111: "WNBA",
     116: "CBA", 117: "KBL", 118: "ACB", 119: "BSL",
@@ -24,41 +23,44 @@ LEAGUE_IDS = {
     128: "ABL", 129: "LNA", 130: "LNB Pro A", 131: "LNB Pro B"
 }
 
-# === REPLACE get_games() ===
 @st.cache_data(ttl=1800)
 def get_games(date_str: str) -> pd.DataFrame:
+    """Fetch ALL games for a date (no status filter — filter in code)."""
     all_games = []
     for lid, name in LEAGUE_IDS.items():
         url = f"{API_BASE}/games"
         params = {
             "date": date_str,
             "league": lid,
-            "season": "2024",  # ← Keep 2024
-            # REMOVE "status": "Not Started" → API returns nothing for future
+            "season": "2024"  # 2024 = 2024-2025 season
         }
         try:
             r = requests.get(url, headers=HEADERS, params=params, timeout=5)
             if r.status_code == 200:
-                for g in r.json().get("response", []):
+                data = r.json().get("response", [])
+                for g in data:
                     status = g.get("status", {}).get("long", "")
-                    if status in ["Not Started", "First Quarter", "Halftime"]:
+                    if status in ["Not Started", "First Quarter", "Halftime"]:  # Upcoming/live
                         g["league_name"] = name
                         all_games.append(g)
         except Exception as e:
-            st.warning(f"[{name}] {e}")
+            st.warning(f"[{name} {date_str}] {e}")
+    
     if not all_games:
+        st.info(f"No games on {date_str}. Try another date.")
         return pd.DataFrame()
+    
     df = pd.DataFrame(all_games)
     df = df.sort_values("date")
     df["time_local"] = pd.to_datetime(df["date"]).dt.tz_convert("Africa/Lagos").dt.strftime("%H:%M WAT")
     return df
 
-# === REPLACE get_upcoming_matches() ===
 @st.cache_data(ttl=1800)
 def get_upcoming_matches(limit: int = 1000, offset: int = 0) -> pd.DataFrame:
+    """Fetch ALL upcoming (next 7 days)."""
     all_games = []
     today = datetime.utcnow().date()
-    for i in range(7):  # Next 7 days only
+    for i in range(7):
         d = (today + timedelta(days=i)).strftime("%Y-%m-%d")
         day_df = get_games(d)
         if not day_df.empty:
@@ -69,11 +71,10 @@ def get_upcoming_matches(limit: int = 1000, offset: int = 0) -> pd.DataFrame:
     df = df.sort_values("date")
     return df.iloc[offset: offset + limit]
 
-# LIVE SCORES
 @st.cache_data(ttl=600)
 def get_live_scores() -> list:
     url = f"{API_BASE}/games"
-    params = {"status": "Live", "timezone": "Africa/Lagos"}
+    params = {"status": "Live"}
     try:
         r = requests.get(url, headers=HEADERS, params=params, timeout=5)
         if r.status_code == 200:
@@ -82,7 +83,6 @@ def get_live_scores() -> list:
         st.warning(f"Live scores error: {e}")
     return []
 
-# ODDS
 def get_stake_odds(game_id: str):
     url = f"{API_BASE}/odds"
     params = {"game": game_id}
