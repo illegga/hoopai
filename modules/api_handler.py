@@ -1,13 +1,10 @@
-# modules/api_handler.py
 import streamlit as st
 import pandas as pd
 import requests
 import json
 from datetime import datetime, timedelta
 
-# -------------------------------------------------
 # CONFIG
-# -------------------------------------------------
 with open("config.json") as f:
     cfg = json.load(f)
 
@@ -18,9 +15,7 @@ HEADERS = {
     "X-RapidAPI-Host": cfg["HOST"]
 }
 
-# -------------------------------------------------
-# ALL OFFICIAL LEAGUE IDs
-# -------------------------------------------------
+# LEAGUE IDS
 LEAGUE_IDS = {
     12: "NBA", 132: "EuroLeague", 108: "NCAA", 111: "WNBA",
     116: "CBA", 117: "KBL", 118: "ACB", 119: "BSL",
@@ -29,12 +24,9 @@ LEAGUE_IDS = {
     128: "ABL", 129: "LNA", 130: "LNB Pro A", 131: "LNB Pro B"
 }
 
-# -------------------------------------------------
-# FETCH GAMES FOR ONE DATE (used by the date-filter)
-# -------------------------------------------------
+# FETCH SINGLE DAY
 @st.cache_data(ttl=1800)
 def get_games(date_str: str) -> pd.DataFrame:
-    """Return all *Not Started* games for a single date."""
     all_games = []
     for lid, name in LEAGUE_IDS.items():
         url = f"{API_BASE}/games"
@@ -46,7 +38,7 @@ def get_games(date_str: str) -> pd.DataFrame:
                     g["league_name"] = name
                     all_games.append(g)
         except Exception as e:
-            st.warning(f"[{name} – {date_str}] {e}")
+            st.warning(f"[{name}] {e}")
     if not all_games:
         return pd.DataFrame()
     df = pd.DataFrame(all_games)
@@ -54,39 +46,23 @@ def get_games(date_str: str) -> pd.DataFrame:
     df["time_local"] = pd.to_datetime(df["date"]).dt.tz_convert("Africa/Lagos").dt.strftime("%H:%M WAT")
     return df
 
-
-# -------------------------------------------------
-# FETCH ALL UPCOMING GAMES (multi-date, used when “no filter”)
-# -------------------------------------------------
+# FETCH ALL UPCOMING (30 DAYS) + PAGINATION
 @st.cache_data(ttl=1800)
 def get_upcoming_matches(limit: int = 1000, offset: int = 0) -> pd.DataFrame:
-    """Return *all* upcoming games (next 30 days) – paginated."""
     all_games = []
     today = datetime.utcnow().date()
-    for i in range(30):                     # next 30 days
+    for i in range(30):
         d = (today + timedelta(days=i)).strftime("%Y-%m-%d")
         day_df = get_games(d)
         if not day_df.empty:
             all_games.append(day_df)
-
     if not all_games:
         return pd.DataFrame()
     df = pd.concat(all_games, ignore_index=True)
     df = df.sort_values("date")
     return df.iloc[offset: offset + limit]
 
-
-# -------------------------------------------------
-# PAGINATION helper
-# -------------------------------------------------
-def paginate(df: pd.DataFrame, page: int = 1, per_page: int = 50) -> pd.DataFrame:
-    start = (page - 1) * per_page
-    return df.iloc[start:start + per_page]
-
-
-# -------------------------------------------------
-# LIVE SCORES (10-min cache)
-# -------------------------------------------------
+# LIVE SCORES
 @st.cache_data(ttl=600)
 def get_live_scores() -> list:
     url = f"{API_BASE}/games"
@@ -99,10 +75,7 @@ def get_live_scores() -> list:
         st.warning(f"Live scores error: {e}")
     return []
 
-
-# -------------------------------------------------
-# ODDS (fallback if none)
-# -------------------------------------------------
+# ODDS
 def get_stake_odds(game_id: str):
     url = f"{API_BASE}/odds"
     params = {"game": game_id}
@@ -124,37 +97,3 @@ def get_stake_odds(game_id: str):
     except Exception:
         pass
     return {"market_line": 215.5, "over_odds": 1.91, "under_odds": 1.89}
-# === ADD TO END OF modules/api_handler.py ===
-@st.cache_data(ttl=1800)
-def get_upcoming_matches(limit: int = 1000, offset: int = 0) -> pd.DataFrame:
-    """Fetch ALL upcoming games (next 30 days), then paginate."""
-    all_games = []
-    today = datetime.utcnow().date()
-
-    for i in range(30):
-        d = (today + timedelta(days=i)).strftime("%Y-%m-%d")
-        day_df = get_games(d)
-        if not day_df.empty:
-            all_games.append(day_df)
-
-    if not all_games:
-        return pd.DataFrame()
-
-    df = pd.concat(all_games, ignore_index=True)
-    df = df.sort_values("date")
-    return df.iloc[offset: offset + limit]
-
-@st.cache_data(ttl=1800)
-def get_upcoming_matches(limit: int = 1000, offset: int = 0) -> pd.DataFrame:
-    all_games = []
-    today = datetime.utcnow().date()
-    for i in range(30):
-        d = (today + timedelta(days=i)).strftime("%Y-%m-%d")
-        day_df = get_games(d)
-        if not day_df.empty:
-            all_games.append(day_df)
-    if not all_games:
-        return pd.DataFrame()
-    df = pd.concat(all_games, ignore_index=True)
-    df = df.sort_values("date")
-    return df.iloc[offset: offset + limit]
