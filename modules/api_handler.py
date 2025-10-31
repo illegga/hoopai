@@ -32,6 +32,7 @@ LEAGUE_IDS = {
 }
 
 @st.cache_data(ttl=1800)
+st.write(f"Fetching {date_str} from {API_BASE}")
 def get_games(date_str: str) -> pd.DataFrame:
     all_games = []
     for lid, name in LEAGUE_IDS.items():
