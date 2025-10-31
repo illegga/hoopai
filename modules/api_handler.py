@@ -124,3 +124,37 @@ def get_stake_odds(game_id: str):
     except Exception:
         pass
     return {"market_line": 215.5, "over_odds": 1.91, "under_odds": 1.89}
+# === ADD TO END OF modules/api_handler.py ===
+@st.cache_data(ttl=1800)
+def get_upcoming_matches(limit: int = 1000, offset: int = 0) -> pd.DataFrame:
+    """Fetch ALL upcoming games (next 30 days), then paginate."""
+    all_games = []
+    today = datetime.utcnow().date()
+
+    for i in range(30):
+        d = (today + timedelta(days=i)).strftime("%Y-%m-%d")
+        day_df = get_games(d)
+        if not day_df.empty:
+            all_games.append(day_df)
+
+    if not all_games:
+        return pd.DataFrame()
+
+    df = pd.concat(all_games, ignore_index=True)
+    df = df.sort_values("date")
+    return df.iloc[offset: offset + limit]
+
+@st.cache_data(ttl=1800)
+def get_upcoming_matches(limit: int = 1000, offset: int = 0) -> pd.DataFrame:
+    all_games = []
+    today = datetime.utcnow().date()
+    for i in range(30):
+        d = (today + timedelta(days=i)).strftime("%Y-%m-%d")
+        day_df = get_games(d)
+        if not day_df.empty:
+            all_games.append(day_df)
+    if not all_games:
+        return pd.DataFrame()
+    df = pd.concat(all_games, ignore_index=True)
+    df = df.sort_values("date")
+    return df.iloc[offset: offset + limit]
