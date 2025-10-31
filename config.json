@@ -1,7 +1,7 @@
 {
-  "API_BASE_URL": "https://api-basketball.p.rapidapi.com",
+  "API_BASE_URL": "https://v1.basketball.api-sports.io",
   "API_KEY": "a6d20c7d56cc10a17ec9ef1531347f81",
-  "HOST": "api-basketball.p.rapidapi.com",
+  "HOST": "v1.basketball.api-sports.io",
   "CURRENCY": "NGN",
   "INITIAL_BANKROLL_NGN": 500000.00,
   "DEFAULT_STAKE_NGN": 5000.00,
