@@ -24,19 +24,26 @@ LEAGUE_IDS = {
     128: "ABL", 129: "LNA", 130: "LNB Pro A", 131: "LNB Pro B"
 }
 
-# FETCH SINGLE DAY
+# === REPLACE get_games() ===
 @st.cache_data(ttl=1800)
 def get_games(date_str: str) -> pd.DataFrame:
     all_games = []
     for lid, name in LEAGUE_IDS.items():
         url = f"{API_BASE}/games"
-        params = {"date": date_str, "league": lid, "season": "2024", "status": "Not Started"}
+        params = {
+            "date": date_str,
+            "league": lid,
+            "season": "2024",  # ← Keep 2024
+            # REMOVE "status": "Not Started" → API returns nothing for future
+        }
         try:
             r = requests.get(url, headers=HEADERS, params=params, timeout=5)
             if r.status_code == 200:
                 for g in r.json().get("response", []):
-                    g["league_name"] = name
-                    all_games.append(g)
+                    status = g.get("status", {}).get("long", "")
+                    if status in ["Not Started", "First Quarter", "Halftime"]:
+                        g["league_name"] = name
+                        all_games.append(g)
         except Exception as e:
             st.warning(f"[{name}] {e}")
     if not all_games:
@@ -46,12 +53,12 @@ def get_games(date_str: str) -> pd.DataFrame:
     df["time_local"] = pd.to_datetime(df["date"]).dt.tz_convert("Africa/Lagos").dt.strftime("%H:%M WAT")
     return df
 
-# FETCH ALL UPCOMING (30 DAYS) + PAGINATION
+# === REPLACE get_upcoming_matches() ===
 @st.cache_data(ttl=1800)
 def get_upcoming_matches(limit: int = 1000, offset: int = 0) -> pd.DataFrame:
     all_games = []
     today = datetime.utcnow().date()
-    for i in range(30):
+    for i in range(7):  # Next 7 days only
         d = (today + timedelta(days=i)).strftime("%Y-%m-%d")
         day_df = get_games(d)
         if not day_df.empty:

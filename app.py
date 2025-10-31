@@ -108,13 +108,13 @@ with tab1:
     with cols[0]:
         if st.button("Prev", key="prev_btn") and st.session_state.pred_page > 1:
             st.session_state.pred_page -= 1
-            st.experimental_rerun()
+            st.rerun()
     with cols[1]:
         st.markdown(f"**Page {st.session_state.pred_page}**")
     with cols[2]:
         if st.button("Next", key="next_btn"):
             st.session_state.pred_page += 1
-            st.experimental_rerun()
+            st.rerun()
 
 with tab2:
     st.header("Sim Bet Slip")
