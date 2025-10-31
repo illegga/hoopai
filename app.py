@@ -1,4 +1,3 @@
-# app.py — FINAL: NO ERRORS, NO IMPORT ISSUES
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -29,28 +28,93 @@ apply()
 
 WAT = pytz.timezone('Africa/Lagos')
 
-# === HEADER ===
+# -------------------------------------------------
+# HEADER (Live-Scores button stays here)
+# -------------------------------------------------
 col1, col2, col3 = st.columns([3, 1, 1])
 with col1:
     st.header("HOOPAI")
 with col2:
     st.selectbox("Theme", ["dark", "light"], key="theme", on_change=apply)
 with col3:
-    st.session_state.best_threshold = st.slider("Threshold", 0.60, 0.90, st.session_state.best_threshold, 0.01)
+    st.session_state.best_threshold = st.slider(
+        "Threshold", 0.60, 0.90, st.session_state.best_threshold, 0.01
+    )
+
+# Live-Scores button (right of header)
+if st.button("Live Scores", key="live_btn"):
+    lives = get_live_scores()
+    if lives:
+        st.subheader("Live Games")
+        for g in lives:
+            home = g["teams"]["home"]["name"]
+            away = g["teams"]["away"]["name"]
+            hs = g["scores"]["home"]["total"]
+            as_ = g["scores"]["away"]["total"]
+            st.write(f"**{home} {hs} – {as_} {away}**")
+            st.caption(f"{g['league']['name']} | {g['period']} | {g['time']}")
+    else:
+        st.info("No live games right now.")
 
 # === TABS ===
 tab1, tab2, tab3, tab4 = st.tabs(["Predictions", "Sim Bets", "Best Choices", "Rollover"])
 
+# -------------------------------------------------
+# PREDICTIONS TAB
+# -------------------------------------------------
 with tab1:
     st.header("Predictions")
-    date = st.date_input("Date", datetime.now(WAT).date(), key="pred_date")
-    games = get_games(str(date))
-    if games.empty:
-        st.info("No games.")
+
+    # ---------- pagination init ----------
+    per_page = 50
+    if "pred_page" not in st.session_state:
+        st.session_state.pred_page = 1
+
+    # ---------- date filter ----------
+    date = st.date_input(
+        "Date (optional)", datetime.now(WAT).date(), key="pred_date"
+    )
+    use_filter = st.checkbox("Filter by date", value=False)
+
+    # ---------- fetch data ----------
+    if use_filter:
+        # single day (you can expand to +/- 3 days if you want)
+        df = get_games(date.strftime("%Y-%m-%d"))
     else:
-        for _, g in games.iterrows():
-            pred = predict_game(g.to_dict())
-            prediction_card(g, pred)
+        # all upcoming (next 30 days) – paginated
+        offset = (st.session_state.pred_page - 1) * per_page
+        df = get_upcoming_matches(limit=per_page, offset=offset)
+
+    # ---------- display ----------
+    if df.empty:
+        st.info("No games on this page.")
+    else:
+        total = len(df) if use_filter else None   # total only known when filtered
+        for _, row in df.iterrows():
+            # build the dict that predict_game expects
+            game = {
+                "id": str(row.get("id") or ""),
+                "date": row.get("date"),
+                "teams": {"home": {"name": row["teams"]["home"]["name"]},
+                          "away": {"name": row["teams"]["away"]["name"]}},
+                "league": {"name": row.get("league_name")},
+                "market_line": row.get("market_line")
+            }
+            pred = predict_game(game)
+            prediction_card(game, pred)
+
+    # ---------- pagination controls ----------
+    cols = st.columns([1, 1, 1])
+    with cols[0]:
+        if st.button("Prev", key="prev_btn") and st.session_state.pred_page > 1:
+            st.session_state.pred_page -= 1
+            st.experimental_rerun()
+    with cols[1]:
+        st.markdown(f"**Page {st.session_state.pred_page}**")
+    with cols[2]:
+        if st.button("Next", key="next_btn"):
+            st.session_state.pred_page += 1
+            st.experimental_rerun()
 
 with tab2:
     st.header("Sim Bet Slip")

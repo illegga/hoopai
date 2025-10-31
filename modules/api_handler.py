@@ -19,7 +19,7 @@ HEADERS = {
 }
 
 # -------------------------------------------------
-# ALL OFFICIAL LEAGUE IDS (from API-Basketball docs)
+# ALL OFFICIAL LEAGUE IDs
 # -------------------------------------------------
 LEAGUE_IDS = {
     12: "NBA", 132: "EuroLeague", 108: "NCAA", 111: "WNBA",
@@ -27,42 +27,28 @@ LEAGUE_IDS = {
     120: "LNB", 121: "VTB", 122: "BCL", 123: "NBL",
     124: "LKL", 125: "LNB Pro B", 126: "NBL1", 127: "PBA",
     128: "ABL", 129: "LNA", 130: "LNB Pro A", 131: "LNB Pro B"
-    # add more IDs if you discover them – the loop works for any number
 }
 
 # -------------------------------------------------
-# FETCH ALL UPCOMING GAMES (multiple dates)
+# FETCH GAMES FOR ONE DATE (used by the date-filter)
 # -------------------------------------------------
-@st.cache_data(ttl=1800)          # 30 min cache
-def get_all_upcoming_games(start_date: str, days_ahead: int = 7) -> pd.DataFrame:
+@st.cache_data(ttl=1800)
+def get_games(date_str: str) -> pd.DataFrame:
+    """Return all *Not Started* games for a single date."""
     all_games = []
-    cur = datetime.strptime(start_date, "%Y-%m-%d")
-
-    for _ in range(days_ahead):
-        d_str = cur.strftime("%Y-%m-%d")
-        for lid, name in LEAGUE_IDS.items():
-            url = f"{API_BASE}/games"
-            params = {
-                "date": d_str,
-                "league": lid,
-                "season": "2024",
-                "status": "Not Started"   # only future games
-            }
-            try:
-                r = requests.get(url, headers=HEADERS, params=params, timeout=5)
-                if r.status_code == 200:
-                    for g in r.json().get("response", []):
-                        g["league_name"] = name
-                        all_games.append(g)
-            except Exception as e:
-                st.warning(f"[{name} – {d_str}] {e}")
-
-        cur += timedelta(days=1)
-
+    for lid, name in LEAGUE_IDS.items():
+        url = f"{API_BASE}/games"
+        params = {"date": date_str, "league": lid, "season": "2024", "status": "Not Started"}
+        try:
+            r = requests.get(url, headers=HEADERS, params=params, timeout=5)
+            if r.status_code == 200:
+                for g in r.json().get("response", []):
+                    g["league_name"] = name
+                    all_games.append(g)
+        except Exception as e:
+            st.warning(f"[{name} – {date_str}] {e}")
     if not all_games:
-        st.error("No upcoming games – check API key / date range.")
         return pd.DataFrame()
-
     df = pd.DataFrame(all_games)
     df = df.sort_values("date")
     df["time_local"] = pd.to_datetime(df["date"]).dt.tz_convert("Africa/Lagos").dt.strftime("%H:%M WAT")
@@ -70,7 +56,28 @@ def get_all_upcoming_games(start_date: str, days_ahead: int = 7) -> pd.DataFrame
 
 
 # -------------------------------------------------
-# PAGINATION (50 per page)
+# FETCH ALL UPCOMING GAMES (multi-date, used when “no filter”)
+# -------------------------------------------------
+@st.cache_data(ttl=1800)
+def get_upcoming_matches(limit: int = 1000, offset: int = 0) -> pd.DataFrame:
+    """Return *all* upcoming games (next 30 days) – paginated."""
+    all_games = []
+    today = datetime.utcnow().date()
+    for i in range(30):                     # next 30 days
+        d = (today + timedelta(days=i)).strftime("%Y-%m-%d")
+        day_df = get_games(d)
+        if not day_df.empty:
+            all_games.append(day_df)
+
+    if not all_games:
+        return pd.DataFrame()
+    df = pd.concat(all_games, ignore_index=True)
+    df = df.sort_values("date")
+    return df.iloc[offset: offset + limit]
+
+
+# -------------------------------------------------
+# PAGINATION helper
 # -------------------------------------------------
 def paginate(df: pd.DataFrame, page: int = 1, per_page: int = 50) -> pd.DataFrame:
     start = (page - 1) * per_page
@@ -78,9 +85,9 @@ def paginate(df: pd.DataFrame, page: int = 1, per_page: int = 50) -> pd.DataFram
 
 
 # -------------------------------------------------
-# LIVE SCORES (refreshes every 10 min)
+# LIVE SCORES (10-min cache)
 # -------------------------------------------------
-@st.cache_data(ttl=600)   # 10 min
+@st.cache_data(ttl=600)
 def get_live_scores() -> list:
     url = f"{API_BASE}/games"
     params = {"status": "Live", "timezone": "Africa/Lagos"}
