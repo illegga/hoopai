@@ -1,4 +1,3 @@
-import streamlit as st
 import pandas as pd
 import requests
 import json
@@ -21,7 +20,6 @@ LEAGUE_IDS = {
     124: "LKL"
 }
 
-@st.cache_data(ttl=1800)
 def get_games(date_str: str) -> pd.DataFrame:
     print(f"Fetching {date_str}")
     all_games = []
@@ -44,7 +42,6 @@ def get_games(date_str: str) -> pd.DataFrame:
     df["time_local"] = pd.to_datetime(df["date"]).dt.tz_convert("Africa/Lagos").dt.strftime("%H:%M WAT")
     return df.sort_values("date")
 
-@st.cache_data(ttl=1800)
 def get_upcoming_matches(limit: int = 100, offset: int = 0) -> pd.DataFrame:
     all_games = []
     today = datetime.utcnow().date()
@@ -58,7 +55,6 @@ def get_upcoming_matches(limit: int = 100, offset: int = 0) -> pd.DataFrame:
     df = pd.concat(all_games, ignore_index=True)
     return df.sort_values("date").iloc[offset:offset + limit]
 
-@st.cache_data(ttl=600)
 def get_live_scores() -> list:
     url = f"{API_BASE}/games"
     params = {"status": "Live"}

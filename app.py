@@ -9,11 +9,28 @@ st.set_page_config(page_title="HoopAI", layout="wide", page_icon="basketball")
 from modules.auth import require_auth
 from modules.theme import apply
 from modules.stake_sim import init, place
-from modules.api_handler import get_games, get_upcoming_matches, get_live_scores
 from modules.predictor import predict_game
 from modules.ui_components import prediction_card
 from modules.database import init_db, save_prediction, get_best_choices
 from modules.rollover import generate_daily_rollover
+
+# Raw imports (no st)
+from modules.api_handler import get_games as _get_games
+from modules.api_handler import get_upcoming_matches as _get_upcoming_matches
+from modules.api_handler import get_live_scores as _get_live_scores
+
+# Cached wrappers
+@st.cache_data(ttl=1800)
+def get_games(date_str):
+    return _get_games(date_str)
+
+@st.cache_data(ttl=1800)
+def get_upcoming_matches(limit=100, offset=0):
+    return _get_upcoming_matches(limit, offset)
+
+@st.cache_data(ttl=600)
+def get_live_scores():
+    return _get_live_scores()
 
 # === INIT ===
 if "best_threshold" not in st.session_state:
@@ -28,9 +45,7 @@ apply()
 
 WAT = pytz.timezone('Africa/Lagos')
 
-# -------------------------------------------------
-# HEADER (Live-Scores button stays here)
-# -------------------------------------------------
+# HEADER
 col1, col2, col3 = st.columns([3, 1, 1])
 with col1:
     st.header("HOOPAI")
@@ -41,7 +56,6 @@ with col3:
         "Threshold", 0.60, 0.90, st.session_state.best_threshold, 0.01
     )
 
-# Live-Scores button (right of header)
 if st.button("Live Scores", key="live_btn"):
     lives = get_live_scores()
     if lives:
@@ -56,42 +70,27 @@ if st.button("Live Scores", key="live_btn"):
     else:
         st.info("No live games right now.")
 
-# === TABS ===
 tab1, tab2, tab3, tab4 = st.tabs(["Predictions", "Sim Bets", "Best Choices", "Rollover"])
 
-# -------------------------------------------------
-# PREDICTIONS TAB
-# -------------------------------------------------
 with tab1:
     st.header("Predictions")
-
-    # ---------- pagination init ----------
     per_page = 50
     if "pred_page" not in st.session_state:
         st.session_state.pred_page = 1
 
-    # ---------- date filter ----------
-    date = st.date_input(
-        "Date (optional)", datetime.now(WAT).date(), key="pred_date"
-    )
+    date = st.date_input("Date (optional)", datetime.now(WAT).date(), key="pred_date")
     use_filter = st.checkbox("Filter by date", value=False)
 
-    # ---------- fetch data ----------
     if use_filter:
-        # single day (you can expand to +/- 3 days if you want)
         df = get_games(date.strftime("%Y-%m-%d"))
     else:
-        # all upcoming (next 30 days) – paginated
         offset = (st.session_state.pred_page - 1) * per_page
         df = get_upcoming_matches(limit=per_page, offset=offset)
 
-    # ---------- display ----------
     if df.empty:
         st.info("No games on this page.")
     else:
-        total = len(df) if use_filter else None   # total only known when filtered
         for _, row in df.iterrows():
-            # build the dict that predict_game expects
             game = {
                 "id": str(row.get("id") or ""),
                 "date": row.get("date"),
@@ -103,7 +102,6 @@ with tab1:
             pred = predict_game(game)
             prediction_card(game, pred)
 
-    # ---------- pagination controls ----------
     cols = st.columns([1, 1, 1])
     with cols[0]:
         if st.button("Prev", key="prev_btn") and st.session_state.pred_page > 1:
