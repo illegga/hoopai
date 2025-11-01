@@ -4,7 +4,6 @@ import requests
 import json
 from datetime import datetime, timedelta
 
-# === CONFIG ===
 with open("config.json") as f:
     cfg = json.load(f)
 
