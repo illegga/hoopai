@@ -32,8 +32,8 @@ LEAGUE_IDS = {
 }
 
 @st.cache_data(ttl=1800)
-st.write(f"Fetching {date_str} from {API_BASE}")
 def get_games(date_str: str) -> pd.DataFrame:
+    print(f"Fetching {date_str} from {API_BASE}")  # ← SAFE DEBUG
     all_games = []
     for lid, name in LEAGUE_IDS.items():
         url = f"{API_BASE}/games"
@@ -51,13 +51,11 @@ def get_games(date_str: str) -> pd.DataFrame:
                     if status in ["Not Started", "First Quarter", "Halftime", "Second Quarter"]:
                         g["league_name"] = name
                         all_games.append(g)
-            else:
-                st.warning(f"[{name}] HTTP {r.status_code}")
         except Exception as e:
-            st.warning(f"[{name}] {e}")
+            print(f"[{name}] Error: {e}")
     
     if not all_games:
-        st.info(f"No games found for {date_str}")
+        print(f"No games on {date_str}")
         return pd.DataFrame()
     
     df = pd.DataFrame(all_games)
