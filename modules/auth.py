@@ -117,7 +117,19 @@ def login():
         st.info("**Only You Can Access**\n\n- Beta locked\n- No new signups\n- Your domain only")
 
 def require_auth():
-    init()
-    if not st.session_state.get("authenticated"):
-        login()
-        st.stop()
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+    if not st.session_state.authenticated:
+        st.subheader("Login Required")
+        email = st.text_input("Email")
+        password = st.text_input("Password", type="password")
+        if st.button("Login"):
+            # Replace with your real check
+            if email == "admin@hoopai.com" and password == "hoopai2025":
+                st.session_state.authenticated = True
+                st.success("Logged in!")
+                st.rerun()
+            else:
+                st.error("Wrong email or password")
+        st.stop()  # ← THIS STOPS THE PAGE HERE UNTIL LOGIN
